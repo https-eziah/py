@@ -21,16 +21,21 @@ def home():
 
 @app.route('/go')
 def track():
-    # 1. Get the 'X-Forwarded-For' header (a list of IPs)
+    # 1. Check for the Forwarded header
     x_forwarded = request.headers.get('X-Forwarded-For')
     
     if x_forwarded:
-        # 2. Render puts YOUR IP first in the list.
-        # We split by comma and take the first item [0]
+        # 2. Get the full list and grab the FIRST one (the real user)
+        # We use .split(',')[0] and strip any extra spaces
         ip = x_forwarded.split(',')[0].strip()
     else:
-        # 3. Fallback if the header is missing
-        ip = request.remote_addr
+        # 3. If that fails, check for X-Real-IP or remote_addr
+        ip = request.headers.get('X-Real-IP', request.remote_addr)
+
+    # 4. Critical: If the IP is still a Render internal IP, try another method
+    if ip.startswith('209.35') or ip.startswith('10.'):
+        # This forces the app to look deeper if it accidentally caught the proxy
+        ip = request.environ.get('HTTP_X_FORWARDED_FOR', ip).split(',')[0].strip()
 
     log_ip(ip)
     return redirect("https://discord.gg/TMKATk684K")
