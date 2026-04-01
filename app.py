@@ -1,14 +1,19 @@
 from flask import Flask, request, redirect
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
 
 # Function to write to the log file
 def log_ip(ip):
+    # Render servers use UTC. Adding 8 hours converts it to Philippine Time.
+    ph_time = datetime.utcnow() + timedelta(hours=8)
+    # Format the time for easier reading (12-hour format with AM/PM)
+    timestamp = ph_time.strftime('%Y-%m-%d %I:%M:%S %p')
+    
     # Note: 'ips.txt' is deleted every time Render restarts or redeploys
     with open("ips.txt", "a") as f:
-        f.write(f"{datetime.now()} - {ip}\n")
+        f.write(f"{timestamp} - {ip}\n")
 
 @app.route('/')
 def home():
