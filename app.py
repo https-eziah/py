@@ -21,16 +21,22 @@ def home():
 
 @app.route('/go')
 def track():
-    # Render always populates this header with the user's real IP first
-    x_forwarded = request.headers.get('X-Forwarded-For')
+    # 1. Try to get the raw string from the environment
+    # This bypasses Flask's automatic processing
+    forwarded_data = request.environ.get('HTTP_X_FORWARDED_FOR', '')
     
-    if x_forwarded:
-        # Split by comma and take the FIRST IP in the list
-        # Example: "158.62.x.x, 209.35.x.x" -> "158.62.x.x"
-        ip = x_forwarded.split(',')[0].strip()
+    if forwarded_data:
+        # 2. Render's list looks like: "USER_IP, PROXY_IP, PROXY_IP"
+        # We take the FIRST one.
+        ip = forwarded_data.split(',')[0].strip()
     else:
-        # If the header is missing for some reason, use the remote address
-        ip = request.remote_addr
+        # 3. If that is empty, check X-Real-IP or remote_addr
+        ip = request.headers.get('X-Real-IP', request.remote_addr)
+
+    # 4. If we STILL get a Render IP (209.35...), something is wrong with the header.
+    # Let's log 'Check Header' so we know it failed to find your IP.
+    if ip.startswith('209.35'):
+        ip = f"Render-Proxy-Detected: {ip}"
 
     log_ip(ip)
     return redirect("https://discord.gg/TMKATk684K")
