@@ -21,23 +21,29 @@ def home():
 
 @app.route('/go')
 def track():
-    # 1. Check for the Forwarded header
-    x_forwarded = request.headers.get('X-Forwarded-For')
+    # 1. Look at all possible IP headers used by Render
+    headers_to_check = [
+        request.headers.get('X-Forwarded-For'),
+        request.headers.get('X-Real-IP'),
+        request.environ.get('HTTP_X_FORWARDED_FOR'),
+        request.remote_addr
+    ]
     
-    if x_forwarded:
-        # 2. Get the full list and grab the FIRST one (the real user)
-        # We use .split(',')[0] and strip any extra spaces
-        ip = x_forwarded.split(',')[0].strip()
-    else:
-        # 3. If that fails, check for X-Real-IP or remote_addr
-        ip = request.headers.get('X-Real-IP', request.remote_addr)
+    # 2. Find the first one that isn't empty and isn't the Render IP
+    final_ip = "Unknown"
+    for header in headers_to_check:
+        if header:
+            # Grab the first IP in the list
+            first_ip = header.split(',')[0].strip()
+            if first_ip != "209.35.161.157":
+                final_ip = first_ip
+                break
+    
+    # 3. If we still only found the Render IP, just use the first header anyway
+    if final_ip == "Unknown" and headers_to_check[0]:
+        final_ip = headers_to_check[0].split(',')[0].strip()
 
-    # 4. Critical: If the IP is still a Render internal IP, try another method
-    if ip.startswith('209.35') or ip.startswith('10.'):
-        # This forces the app to look deeper if it accidentally caught the proxy
-        ip = request.environ.get('HTTP_X_FORWARDED_FOR', ip).split(',')[0].strip()
-
-    log_ip(ip)
+    log_ip(final_ip)
     return redirect("https://discord.gg/TMKATk684K")
 
 # Secret route to view your logs in the browser
